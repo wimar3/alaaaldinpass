@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>علاء الدين - التحقق واستعادة كلمة المرور</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      background-color: #fff;
+      border-radius: 20px;
+      padding: 40px 30px;
+      max-width: 450px;
+      width: 100%;
+      margin: 20px auto;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      direction: rtl;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-5px);
+    }
+
+    .logo {
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      object-fit: contain;
+      margin: 0 auto 25px auto;
+      display: block;
+      border: 3px solid #f0f0f0;
+      padding: 5px;
+      background: white;
+    }
+
+    h1 {
+      color: #4B0082;
+      font-size: 24px;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: right;
+    }
+
+    .password-container {
+      position: relative;
+      margin-bottom: 15px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px 45px 15px 15px;
+      font-size: 16px;
+      border: 2px solid #e1e1e1;
+      border-radius: 12px;
+      text-align: right;
+      transition: all 0.3s ease;
+      background-color: #fafafa;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #4B0082;
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(75, 0, 130, 0.1);
+    }
+
+    .toggle-password {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: #666;
+      padding: 5px;
+    }
+
+    .toggle-password:hover {
+      color: #4B0082;
+    }
+
+    .password-strength {
+      height: 4px;
+      background: #eee;
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .strength-bar {
+      height: 100%;
+      width: 0%;
+      transition: all 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .strength-weak { background: #ff4757; width: 33%; }
+    .strength-medium { background: #ffa502; width: 66%; }
+    .strength-strong { background: #2ed573; width: 100%; }
+
+    .password-requirements {
+      text-align: right;
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .requirement {
+      margin: 3px 0;
+      transition: color 0.3s ease;
+    }
+
+    .requirement.met {
+      color: #2ed573;
+    }
+
+    .requirement.unmet {
+      color: #666;
+    }
+
+    button {
+      background: linear-gradient(135deg, #4B0082, #6A0DAD);
+      color: #fff;
+      border: none;
+      padding: 16px 30px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 7px 20px rgba(75, 0, 130, 0.3);
+    }
+
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .button-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .loading-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top: 2px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .status-message {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .success-actions {
+      margin-top: 25px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .secondary-button {
+      background: #6c757d;
+      padding: 12px 20px;
+      font-size: 14px;
+    }
+
+    .secondary-button:hover {
+      background: #5a6268;
+    }
+
+    footer {
+      margin-top: 30px;
+      font-size: 13px;
+      color: #777;
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container fade-in">
+    <img src="https://qgwlcuxrudvdnmryajza.supabase.co/storage/v1/object/public/logo/logo.png" 
+         alt="علاء الدين" 
+         class="logo"
+         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMjAiIGZpbGw9IiM0QjAwODIiLz4KPHRleHQgeD0iNjAiIHk9IjY1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7Zh9in2YYg2KfYqjwvdGV4dD4KPC9zdmc+'">
+
+    <h1 id="title">جاري التحميل...</h1>
+    <p id="message" class="subtitle">يرجى الانتظار</p>
+
+    <!-- نموذج إعادة تعيين كلمة المرور -->
+    <div id="resetForm" class="hidden">
+      <div class="form-group">
+        <div class="password-container">
+          <input type="password" id="newPassword" placeholder="كلمة المرور الجديدة" />
+          <button type="button" class="toggle-password" onclick="togglePassword('newPassword')">👁️</button>
+        </div>
+        <div class="password-strength">
+          <div class="strength-bar" id="passwordStrength"></div>
+        </div>
+        <div class="password-requirements" id="passwordRequirements">
+          <div class="requirement unmet" id="reqLength">8 أحرف على الأقل</div>
+          <div class="requirement unmet" id="reqUpper">حرف كبير واحد على الأقل</div>
+          <div class="requirement unmet" id="reqLower">حرف صغير واحد على الأقل</div>
+          <div class="requirement unmet" id="reqNumber">رقم واحد على الأقل</div>
+          <div class="requirement unmet" id="reqSpecial">رمز خاص واحد على الأقل</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="password-container">
+          <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور" />
+          <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword')">👁️</button>
+        </div>
+      </div>
+
+      <button onclick="resetPassword()" id="resetButton">
+        <div class="button-content">
+          <span id="buttonText">تغيير كلمة المرور</span>
+          <div class="loading-spinner" id="loadingSpinner"></div>
+        </div>
+      </button>
+
+      <div id="resetStatus" class="status-message hidden"></div>
+    </div>
+
+    <!-- رسالة النجاح -->
+    <div id="successMessage" class="status-message success hidden">
+      <p>تم تحديث كلمة المرور بنجاح! ✅</p>
+      <div class="success-actions">
+        <button class="secondary-button" onclick="redirectToLogin()">تسجيل الدخول</button>
+        <button class="secondary-button" onclick="goToHomepage()">الصفحة الرئيسية</button>
+      </div>
+    </div>
+
+    <footer>
+      &copy; 2025 علاء الدين - جميع الحقوق محفوظة.
+    </footer>
+  </div>
+
+  <!-- مكتبة Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // إعداد الاتصال بـ Supabase
+    const supabase = supabase.createClient(
+      "https://qgwlcuxrudvdnmryajza.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnd2xjdXhydWR2ZG5tcnlhanphIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAwMDAwMDAsImV4cCI6MjAwNTU3NjAwMH0.PmYocUOKYoJcX8hUoE-lYyEYcIbnTiX1nK7H6OeRhZ8"
+    );
+
+    // عناصر DOM
+    const title = document.getElementById("title");
+    const message = document.getElementById("message");
+    const resetForm = document.getElementById("resetForm");
+    const resetStatus = document.getElementById("resetStatus");
+    const successMessage = document.getElementById("successMessage");
+    const passwordStrength = document.getElementById("passwordStrength");
+    const newPasswordInput = document.getElementById("newPassword");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
+
+    // معلمات URL
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type");
+    const accessToken = params.get("access_token");
+
+    // تهيئة الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+      initializePage();
+      setupEventListeners();
+    });
+
+    function initializePage() {
+      if (type === "recovery" && accessToken) {
+        showResetForm();
+      } else if (type === "signup") {
+        showSignupSuccess();
+      } else {
+        showInvalidLink();
+      }
+    }
+
+    function setupEventListeners() {
+      // تحقق من قوة كلمة المرور في الوقت الفعلي
+      newPasswordInput.addEventListener('input', function() {
+        validatePasswordStrength(this.value);
+        validatePasswordsMatch();
+      });
+
+      // تحقق من تطابق كلمات المرور في الوقت الفعلي
+      confirmPasswordInput.addEventListener('input', validatePasswordsMatch);
+    }
+
+    function showResetForm() {
+      title.textContent = "إعادة تعيين كلمة المرور 🔒";
+      message.textContent = "يرجى إدخال كلمة مرور جديدة وقوية:";
+      resetForm.classList.remove("hidden");
+    }
+
+    function showSignupSuccess() {
+      title.textContent = "تم تأكيد بريدك الإلكتروني بنجاح 🎉";
+      message.textContent = "شكرًا لانضمامك إلى عالم علاء الدين السحري! يمكنك الآن تسجيل الدخول إلى حسابك.";
+      successMessage.classList.remove("hidden");
+      successMessage.innerHTML = `
+        <p>تم تأكيد بريدك الإلكتروني بنجاح! 🎉</p>
+        <div class="success-actions">
+          <button class="secondary-button" onclick="redirectToLogin()">تسجيل الدخول</button>
+          <button class="secondary-button" onclick="goToHomepage()">استكشاف التطبيق</button>
+        </div>
+      `;
+    }
+
+    function showInvalidLink() {
+      title.textContent = "تعذر تحديد العملية ⚠️";
+      message.textContent = "يرجى فتح الرابط من البريد الإلكتروني المرسل لك لتغيير كلمة المرور أو تأكيد البريد.";
+      resetStatus.textContent = "الرابط غير صالح أو منتهي الصلاحية";
+      resetStatus.className = "status-message error";
+      resetStatus.classList.remove("hidden");
+    }
+
+    function validatePasswordStrength(password) {
+      const requirements = {
+        length: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      };
+
+      // تحديث متطلبات كلمة المرور
+      document.getElementById('reqLength').className = requirements.length ? 'requirement met' : 'requirement unmet';
+      document.getElementById('reqUpper').className = requirements.upper ? 'requirement met' : 'requirement unmet';
+      document.getElementById('reqLower').className = requirements.lower ? 'requirement met' : 'requirement unmet';
+      document.getElementById('reqNumber').className = requirements.number ? 'requirement met' : 'requirement unmet';
+      document.getElementById('reqSpecial').className = requirements.special ? 'requirement met' : 'requirement unmet';
+
+      // تحديث شريط قوة كلمة المرور
+      const metCount = Object.values(requirements).filter(Boolean).length;
+      let strength = '';
+      
+      if (metCount <= 2) {
+        strength = 'strength-weak';
+      } else if (metCount <= 4) {
+        strength = 'strength-medium';
+      } else {
+        strength = 'strength-strong';
+      }
+
+      passwordStrength.className = `strength-bar ${strength}`;
+    }
+
+    function validatePasswordsMatch() {
+      const newPassword = newPasswordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      if (confirmPassword && newPassword !== confirmPassword) {
+        confirmPasswordInput.style.borderColor = '#ff4757';
+      } else if (confirmPassword && newPassword === confirmPassword) {
+        confirmPasswordInput.style.borderColor = '#2ed573';
+      } else {
+        confirmPasswordInput.style.borderColor = '#e1e1e1';
+      }
+    }
+
+    function togglePassword(inputId) {
+      const input = document.getElementById(inputId);
+      const toggleButton = input.nextElementSibling;
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        toggleButton.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        toggleButton.textContent = '👁️';
+      }
+    }
+
+    async function resetPassword() {
+      const newPassword = newPasswordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      const button = document.getElementById("resetButton");
+      const buttonText = document.getElementById("buttonText");
+      const spinner = document.getElementById("loadingSpinner");
+
+      // التحقق من صحة المدخلات
+      if (!newPassword || !confirmPassword) {
+        showStatus("يرجى ملء جميع الحقول", "error");
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showStatus("كلمتا المرور غير متطابقتين!", "error");
+        return;
+      }
+
+      if (!validatePasswordRequirements(newPassword)) {
+        showStatus("كلمة المرور لا تستوفي المتطلبات", "error");
+        return;
+      }
+
+      if (!accessToken) {
+        showStatus("رمز الوصول مفقود. يرجى فتح الرابط من البريد الإلكتروني مباشرة.", "error");
+        return;
+      }
+
+      // إظهار مؤشر التحميل
+      button.disabled = true;
+      buttonText.textContent = "جاري تحديث كلمة المرور...";
+      spinner.style.display = "block";
+
+      try {
+        const { data, error } = await supabase.auth.updateUser({
+          password: newPassword
+        }, {
+          access_token: accessToken
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        // النجاح
+        showStatus("تم تحديث كلمة المرور بنجاح!", "success");
+        resetForm.classList.add("hidden");
+        successMessage.classList.remove("hidden");
+        
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        handleResetError(error);
+      } finally {
+        // إخفاء مؤشر التحميل
+        button.disabled = false;
+        buttonText.textContent = "تغيير كلمة المرور";
+        spinner.style.display = "none";
+      }
+    }
+
+    function validatePasswordRequirements(password) {
+      return password.length >= 8 &&
+             /[A-Z]/.test(password) &&
+             /[a-z]/.test(password) &&
+             /\d/.test(password) &&
+             /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    }
+
+    function handleResetError(error) {
+      let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
+      
+      switch (error.message) {
+        case 'Password should be at least 6 characters':
+          errorMessage = "كلمة المرور يجب أن تكون 8 أحرف على الأقل";
+          break;
+        case 'Invalid password':
+          errorMessage = "كلمة المرور غير صالحة";
+          break;
+        case 'Auth session missing':
+        case 'Invalid refresh token':
+          errorMessage = "انتهت صلاحية الرابط. يرجى طلب رابط جديد من تطبيق علاء الدين";
+          break;
+        case 'User not found':
+          errorMessage = "لم يتم العثور على المستخدم";
+          break;
+        default:
+          errorMessage = `حدث خطأ: ${error.message}`;
+      }
+      
+      showStatus(errorMessage, "error");
+    }
+
+    function showStatus(message, type) {
+      resetStatus.textContent = message;
+      resetStatus.className = `status-message ${type}`;
+      resetStatus.classList.remove("hidden");
+      
+      // إخفاء الرسالة تلقائياً بعد 5 ثوانٍ للأخطاء
+      if (type === 'error') {
+        setTimeout(() => {
+          resetStatus.classList.add("hidden");
+        }, 5000);
+      }
+    }
+
+    function redirectToLogin() {
+      window.location.href = "https://your-app.com/login";
+    }
+
+    function goToHomepage() {
+      window.location.href = "https://your-app.com";
+    }
+
+    // إضافة تأثيرات عند التمرير
+    window.addEventListener('scroll', function() {
+      const container = document.querySelector('.container');
+      const scrolled = window.pageYOffset;
+      const rate = scrolled * -0.5;
+      container.style.transform = `translateY(${rate}px)`;
+    });
+  </script>
+</body>
+</html>
