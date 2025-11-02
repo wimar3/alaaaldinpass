@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>تأكيد البريد الإلكتروني واستعادة كلمة المرور</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Cairo font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      direction: rtl;
+      text-align: right;
+    }
+    .container {
+      width: 90%;
+      max-width: 400px;
+      margin: 80px auto;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      width: 150px;
+      height: auto;
+    }
+    h2 {
+      margin: 0 0 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+    #message {
+      font-size: 16px;
+      margin: 20px 0;
+      color: #388e3c;
+      text-align: center;
+    }
+    #error {
+      font-size: 16px;
+      margin: 20px 0;
+      color: #d32f2f;
+      text-align: center;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: stretch;
+    }
+    label {
+      font-weight: 600;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #2196F3;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- شعار علاء الدين في الأعلى -->
+    <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Aladdin_%28Disney_franchise%29_logo.svg/2560px-Aladdin_%28Disney_franchise%29_logo.svg.png" alt="شعار علاء الدين">
+    <h2>تأكيد البريد الإلكتروني واستعادة كلمة المرور</h2>
+    <div id="message"></div>
+    <div id="error"></div>
+    <!-- نموذج تعيين كلمة المرور الجديدة -->
+    <form id="reset-form" style="display: none;">
+      <label for="new-password">كلمة المرور الجديدة:</label>
+      <input type="password" id="new-password" placeholder="********" required>
+      <button type="submit">تعيين كلمة المرور</button>
+    </form>
+  </div>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // استبدل YOUR_SUPABASE_URL و YOUR_ANON_KEY بالقيم الخاصة بمشروعك
+    const { createClient } = supabase;
+    const supabaseClient = createClient('https://YOUR_SUPABASE_URL.supabase.co', 'YOUR_ANON_KEY');
+
+    // دالة لعرض رسالة نجاح
+    function showMessage(msg) {
+      document.getElementById('message').textContent = msg;
+      document.getElementById('error').textContent = '';
+    }
+    // دالة لعرض رسالة خطأ
+    function showError(msg) {
+      document.getElementById('error').textContent = msg;
+      document.getElementById('message').textContent = '';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      // استخراج المعاملات من الرابط (الاستعلام والمقتطف)
+      const queryParams = new URLSearchParams(window.location.search.slice(1));
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      // دمجهما
+      const params = new URLSearchParams();
+      for (const [key, value] of queryParams) {
+        params.set(key, value);
+      }
+      for (const [key, value] of hashParams) {
+        params.set(key, value);
+      }
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (type === 'signup') {
+        // تأكيد البريد الإلكتروني
+        if (accessToken) {
+          // تعيين الجلسة في supabase
+          const { data, error } = await supabaseClient.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (error) {
+            showError('حدث خطأ أثناء تأكيد البريد الإلكتروني.');
+            console.error(error);
+          } else {
+            showMessage('تم تفعيل حسابك بنجاح. يمكنك الآن تسجيل الدخول.');
+          }
+        } else {
+          showError('الرابط غير صالح أو منتهي.');
+        }
+      } else if (type === 'recovery') {
+        // استعادة كلمة المرور - عرض النموذج
+        if (accessToken) {
+          const { data, error } = await supabaseClient.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (error) {
+            showError('حدث خطأ في الرابط. يرجى المحاولة مرة أخرى.');
+            console.error(error);
+          } else {
+            // إظهار نموذج تعيين كلمة المرور الجديدة
+            document.getElementById('reset-form').style.display = 'flex';
+          }
+        } else {
+          showError('الرابط غير صالح أو منتهي.');
+        }
+      } else {
+        // نوع الرابط غير معروف
+        showError('الرابط غير صالح أو منتهي.');
+      }
+    });
+
+    // التعامل مع حدث إرسال النموذج لتغيير كلمة المرور
+    document.getElementById('reset-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('new-password').value;
+      if (!newPassword) {
+        showError('الرجاء إدخال كلمة مرور جديدة.');
+        return;
+      }
+      const { data, error } = await supabaseClient.auth.updateUser({ password: newPassword });
+      if (error) {
+        showError(error.message || 'حدث خطأ أثناء تغيير كلمة المرور.');
+        console.error(error);
+      } else {
+        showMessage('تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.');
+        // إخفاء النموذج بعد النجاح
+        document.getElementById('reset-form').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
