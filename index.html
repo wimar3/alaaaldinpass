@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>تغيير كلمة المرور</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <h2>تغيير كلمة المرور</h2>
+  <div id="msg"></div>
+  <form id="pwForm" style="display:none">
+    <input id="password" type="password" placeholder="كلمة المرور الجديدة" minlength="6" required/>
+    <input id="confirm" type="password" placeholder="تأكيد كلمة المرور" minlength="6" required/>
+    <button type="submit">حفظ</button>
+  </form>
+
+  <script>
+    // عدّل هذا إلى URL مشروع Supabase الخاص بك
+    const SUPABASE_URL = 'https://your-project.supabase.co';
+    const SUPABASE_ANON_KEY = 'public-anon-key';
+    const supabase = supabaseJs.createClient(https://qgwlcuxrudvdnmryajza.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnd2xjdXhydWR2ZG5tcnlhanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzMzNzM1MywiZXhwIjoyMDYyOTEzMzUzfQ.z03I4ka3aOy8CHEJsx0lDVqUsQIVAcEk3yD1esNuGFU);
+
+    const msg = document.getElementById('msg');
+    const form = document.getElementById('pwForm');
+
+    // بعض روابط إعادة التوجيه تأتي مع fragment (#access_token=...) أو مع query (?code=...)
+    async function init() {
+      const hash = window.location.hash; // fragment
+      const search = window.location.search; // query
+      // إذا جاء code (OAuth style) يمكن تبديله لجلسة
+      const params = new URLSearchParams(search);
+      const code = params.get('code');
+
+      if (code) {
+        // تبادل الكود إلى جلسة (إذا كانت الحالة كذلك)
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch (err) {
+          msg.textContent = 'خطأ عند تبادل الكود: ' + (err.message || err);
+          return;
+        }
+      }
+
+      // انتظار حدث التوثيق: PASSWORD_RECOVERY أو SIGNED_IN
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || session) {
+          // الآن المستخدم مُسجل مؤقتًا، أظهر النموذج
+          form.style.display = 'block';
+        }
+      });
+
+      // بعض حالات تأتي مع access_token في ال fragment: supabase-js عادة يقرأها تلقائياً
+      // إذا لم يحدث شيء بعد فترة، أعرض نموذج لإعادة إدخال البريد
+      setTimeout(() => {
+        if (form.style.display === 'none') {
+          msg.innerHTML = 'جارٍ المعالجة... إن لم ينجح، افتح التطبيق/أعد المحاولة أو تأكد من إعدادات Redirect في Supabase.';
+        }
+      }, 800);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const p = document.getElementById('password').value;
+      const c = document.getElementById('confirm').value;
+      if (p !== c) { msg.textContent = 'كلمات المرور غير مطابقة'; return; }
+      if (p.length < 6) { msg.textContent = 'الحد الأدنى 6 أحرف'; return; }
+
+      try {
+        // supabase.auth.updateUser سيقوم بتحديث كلمة المرور للمستخدم الحالي (المسجّل مؤقتًا عبر الرابط)
+        const { error } = await supabase.auth.updateUser({ password: p });
+        if (error) throw error;
+        msg.textContent = 'تم تغيير كلمة المرور بنجاح. يمكنك إغلاق النافذة والعودة للتطبيق.';
+        form.style.display = 'none';
+      } catch (err) {
+        msg.textContent = 'خطأ أثناء التغيير: ' + (err.message || err);
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
