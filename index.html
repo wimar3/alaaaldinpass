@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>علاء الدين | تفعيل الحساب / تغيير كلمة المرور</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f8f8f8;
+      padding: 20px;
+      text-align: center;
+    }
+    .box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 0 10px #ddd;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #673ab7;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #msg {
+      margin: 10px 0;
+      padding: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>علاء الدين</h2>
+  <div id="msg">جارٍ التحقق...</div>
+
+  <!-- نموذج تغيير كلمة المرور -->
+  <form id="pwForm" style="display:none">
+    <input id="password" type="password" placeholder="كلمة المرور الجديدة" minlength="6" required>
+    <input id="confirm" type="password" placeholder="تأكيد كلمة المرور" minlength="6" required>
+    <button type="submit">تغيير كلمة المرور</button>
+  </form>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://qgwlcuxrudvdnmryajza.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnd2xjdXhydWR2ZG5tcnlhanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzMzNzM1MywiZXhwIjoyMDYyOTEzMzUzfQ.z03I4ka3aOy8CHEJsx0lDVqUsQIVAcEk3yD1esNuGFU";
+
+  const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const msg = document.getElementById("msg");
+  const form = document.getElementById("pwForm");
+
+  async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    // في حال كان الرابط يحتوي code (OAuth style)
+    if (code) {
+      try {
+        await supabase.auth.exchangeCodeForSession(code);
+      } catch (err) {
+        msg.textContent = "فشل تبادل الكود: " + err.message;
+        return;
+      }
+    }
+
+    // مراقبة حدث Supabase
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Event:", event);
+
+      if (event === "PASSWORD_RECOVERY") {
+        msg.textContent = "رجاءً أدخل كلمة مرور جديدة";
+        form.style.display = "block";
+      }
+
+      if (event === "SIGNED_IN" && session) {
+        msg.textContent = "تم التحقق من الحساب بنجاح! يمكنك إغلاق الصفحة.";
+      }
+
+      if (event === "USER_UPDATED") {
+        msg.textContent = "تم تغيير كلمة المرور بنجاح! يمكنك العودة للتطبيق.";
+      }
+    });
+
+    // إذا لم يصل أي حدث — نظهر رسالة
+    setTimeout(() => {
+      if (msg.textContent === "جارٍ التحقق...") {
+        msg.textContent = "تمت معالجة الرابط. إذا لم يحدث شيء، حاول فتحه من جديد.";
+      }
+    }, 1500);
+  }
+
+  // عند إرسال النموذج
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const p = document.getElementById("password").value;
+    const c = document.getElementById("confirm").value;
+
+    if (p !== c) {
+      msg.textContent = "كلمة المرور غير متطابقة";
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: p });
+      if (error) throw error;
+
+      msg.textContent = "تم تغيير كلمة المرور بنجاح!";
+      form.style.display = "none";
+
+    } catch (err) {
+      msg.textContent = "خطأ: " + err.message;
+    }
+  });
+
+  init();
+</script>
+
+</body>
+</html>
