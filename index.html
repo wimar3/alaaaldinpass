@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8"/>
+  <title>تغيير / تفعيل الحساب</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 720px; margin: auto; direction: rtl; }
+    h1 { text-align: center; }
+    .card { border: 1px solid #eee; padding: 18px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+    .hidden { display:none; }
+    input[type="password"], input[type="text"] { width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing: border-box; }
+    button { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; }
+    .btn-primary { background:#5b21b6; color:white; }
+    .btn-ghost { background:transparent; color:#5b21b6; border:1px solid #5b21b6; }
+    .msg { margin:12px 0; padding:10px; border-radius:6px; }
+    .msg.success { background:#e6ffed; color:#065f46; border:1px solid #b7f5d4; }
+    .msg.error { background:#ffe6e6; color:#7b1f1f; border:1px solid #f5b7b7; }
+    .muted { color:#666; font-size:0.95rem; }
+    .small { font-size:0.9rem; color:#444; }
+    .fallback { margin-top:12px; padding:10px; border-radius:6px; background:#f9fafb; border:1px dashed #e5e7eb; }
+  </style>
+</head>
+<body>
+  <h1>معالجة رابط التوثيق</h1>
+  <div class="card">
+    <div id="statusMsg" class="msg muted">جارٍ فحص الرابط...</div>
+
+    <!-- نموذج تغيير كلمة المرور -->
+    <form id="pwForm" class="hidden">
+      <label class="small">أدخل كلمة المرور الجديدة (6 أحرف على الأقل)</label>
+      <input id="password" type="password" placeholder="كلمة المرور الجديدة" minlength="6" required />
+      <input id="confirm" type="password" placeholder="تأكيد كلمة المرور" minlength="6" required />
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="pwSubmit" type="submit" class="btn-primary">حفظ كلمة المرور</button>
+        <button id="pwCancel" type="button" class="btn-ghost">العودة</button>
+      </div>
+    </form>
+
+    <!-- رسالة تفعيل الحساب -->
+    <div id="verifyMsg" class="hidden">
+      <div class="msg success">تم تفعيل الحساب بنجاح 🎉</div>
+      <div class="small">يمكنك الآن تسجيل الدخول من التطبيق أو من صفحة تسجيل الدخول.</div>
+    </div>
+
+    <!-- تعليمات أو خطأ -->
+    <div id="errorBox" class="hidden msg error"></div>
+
+    <!-- فاليباك: لصق التوكن يدوياً -->
+    <div id="fallback" class="fallback hidden">
+      <div class="small">إن لم تتم معالجة الرابط تلقائيًا، يمكنك لصق التوكن هنا (حل مؤقت):</div>
+      <input id="manualToken" type="text" placeholder="ألصق التوكن هنا (مثلاً القيمة بعد token=)"/>
+      <div style="margin-top:8px;">
+        <button id="manualOpen" class="btn-primary">فتح التوكن (محاولة)</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">ملاحظة: أفضل تجربة تحصل بتشغيل الرابط في المتصفح نفسه الذي استلمت منه البريد الإلكتروني.</div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- عدّل هنا إلى بيانات مشروعك ---
+    const SUPABASE_URL = 'https://qgwlcuxrudvdnmryajza.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnd2xjdXhydWR2ZG5tcnlhanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzMzNzM1MywiZXhwIjoyMDYyOTEzMzUzfQ.z03I4ka3aOy8CHEJsx0lDVqUsQIVAcEk3yD1esNuGFU';
+    // ----------------------------------
+    const supabase = supabaseJs.createClient(https://qgwlcuxrudvdnmryajza.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnd2xjdXhydWR2ZG5tcnlhanphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzMzNzM1MywiZXhwIjoyMDYyOTEzMzUzfQ.z03I4ka3aOy8CHEJsx0lDVqUsQIVAcEk3yD1esNuGFU);
+
+    const statusMsg = document.getElementById('statusMsg');
+    const pwForm = document.getElementById('pwForm');
+    const verifyMsg = document.getElementById('verifyMsg');
+    const errorBox = document.getElementById('errorBox');
+    const fallback = document.getElementById('fallback');
+
+    const password = document.getElementById('password');
+    const confirm = document.getElementById('confirm');
+    const manualToken = document.getElementById('manualToken');
+    const manualOpen = document.getElementById('manualOpen');
+    const pwCancel = document.getElementById('pwCancel');
+
+    function showStatus(text, type = 'muted') {
+      statusMsg.className = 'msg ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : 'muted');
+      statusMsg.textContent = text;
+    }
+    function showError(text) {
+      errorBox.classList.remove('hidden');
+      errorBox.textContent = text;
+    }
+    function hideError() {
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+    }
+    function showFallback() {
+      fallback.classList.remove('hidden');
+    }
+
+    // محاولة استرجاع الجلسة من URL (supabase-js يقوم بمعالجة الfragment أو الcode)
+    async function tryGetSessionFromUrl() {
+      try {
+        // supabase-js v2 يوفر getSessionFromUrl() لمعالجة الرابط بعد redirect
+        // نمرّر { storeSession: true } لجعل المكتبة تحفظ الجلسة محليًا.
+        const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+        return { data, error };
+      } catch (err) {
+        return { data: null, error: err };
+      }
+    }
+
+    // اقرأ بارامترات الـ URL (query)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get('token');
+    const typeParam = urlParams.get('type'); // قد تكون 'recovery' أو 'signup' أو 'recovery' أو 'invite' إلخ
+    const redirectTo = urlParams.get('redirect_to') || '';
+
+    (async function init() {
+      showStatus('جاري فحص الرابط...');
+
+      // 1) حاول معالجة الرابط تلقائيًا عبر supabase-js (fragment أو code)
+      const result = await tryGetSessionFromUrl();
+      if (result.error) {
+        // ليس خطأ قاتل — قد يكون الرابط جاء بتنسيق مختلف
+        console.warn('getSessionFromUrl error', result.error);
+      }
+
+      // استعلم عن الجلسة الحالية
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session;
+
+      // إذا كانت الـ query تحتوي على نوع وتوكن، احتفظ بهما (للغرض الإعلامي)
+      console.log('tokenParam=', tokenParam, 'typeParam=', typeParam, 'redirectTo=', redirectTo);
+      
+      // حالة: تغيير كلمة المرور (recovery)
+      if (typeParam === 'recovery') {
+        // إذا تحصلنا على جلسة بعد getSessionFromUrl -> يمكن تغيير كلمة المرور مباشرة
+        if (session) {
+          showStatus('يمكنك الآن إدخال كلمة المرور الجديدة.', 'success');
+          pwForm.classList.remove('hidden');
+        } else {
+          // لا توجد جلسة: حاول أن نبلّغ المستخدم بالمشكلة ونقترح حلولًا
+          showStatus('الرابط خاص باستعادة كلمة المرور لكن لم يتم إنشاء جلسة تلقائية.', 'error');
+          showError('قد يكون المتصفح منع الـ redirect أو تم فتح الرابط في متصفح مختلف. افتح الرابط في نفس المتصفح الذي استلمت منه الإيميل. إن لم تنجح، انسخ التوكن وألصقه أدناه.');
+          showFallback();
+        }
+        return;
+      }
+
+      // حالة: تفعيل الحساب أو تأكيد البريد
+      if (typeParam === 'signup' || typeParam === 'verify' || typeParam === 'signup_confirm' || typeParam === 'email_change' || typeParam === 'invite') {
+        if (session) {
+          showStatus('تم التحقق/تفعيل الحساب بنجاح.', 'success');
+          verifyMsg.classList.remove('hidden');
+        } else {
+          // بعض توزيعات قد لا تنشئ جلسة تلقائياً على هذا الرابط، لكن التحقق قد نجح على الخادم
+          // نعرض تعليمات للمستخدم لتسجيل الدخول
+          showStatus('تم إرسال طلب التفعيل. إن لم تُنشأ جلسة تلقائية، قم بتسجيل الدخول من التطبيق.', 'success');
+          verifyMsg.classList.remove('hidden');
+          showFallback();
+        }
+        return;
+      }
+
+      // حالة: لربما الوصلة تحتوي fragment #access_token=... وتمت معالجتها أعلاه، وإلا نجرب الاستماع لحدث auth
+      // استمع لتغير حالة المصادقة لمراقبة ما إذا وصلنا جلسة لاحقًا
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log('auth event', event, session);
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+          // إذا كان نوع الرابط recovery وأصبحت لدينا جلسة — أظهر النموذج
+          if (typeParam === 'recovery') {
+            showStatus('تم إنشاء جلسة: يمكنك الآن تغيير كلمة المرور.', 'success');
+            pwForm.classList.remove('hidden');
+            hideError();
+          } else {
+            showStatus('تم تسجيل الدخول/التحقق بنجاح.', 'success');
+            verifyMsg.classList.remove('hidden');
+            hideError();
+          }
+        }
+      });
+
+      // لو غير معروف النوع: أعرض واجهة توضيحية وفاليباك
+      if (!typeParam) {
+        showStatus('لم يتضمن الرابط نوعاً (type). سنحاول معالجة أي جلسة موجودة.', 'muted');
+        if (session) {
+          showStatus('تم استرجاع جلسة بنجاح. إذا كان رابط تغيير كلمة المرور، يمكنك إعادة فتح الرابط أو المحاولة مرة أخرى.', 'success');
+        } else {
+          showFallback();
+        }
+      }
+    })();
+
+    // معالجة إرسال كلمة المرور الجديدة
+    pwForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+      const p = password.value.trim();
+      const c = confirm.value.trim();
+      if (!p || !c) { showError('الرجاء إدخال كلمة المرور وتأكيدها.'); return; }
+      if (p.length < 6) { showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل.'); return; }
+      if (p !== c) { showError('كلمتا المرور غير متطابقتين.'); return; }
+
+      // استدعي updateUser لتغيير كلمة المرور للمستخدم الحالي (يجب أن تكون هناك جلسة)
+      showStatus('جارٍ تغيير كلمة المرور...');
+      try {
+        const { data, error } = await supabase.auth.updateUser({ password: p });
+        if (error) throw error;
+        showStatus('تم تغيير كلمة المرور بنجاح. يمكنك الآن العودة للتطبيق وتسجيل الدخول.', 'success');
+        pwForm.classList.add('hidden');
+      } catch (err) {
+        console.error(err);
+        showStatus('فشل تغيير كلمة المرور.', 'error');
+        showError((err?.message) || String(err));
+      }
+    });
+
+    // زر إلغاء (العودة)
+    pwCancel.addEventListener('click', () => {
+      window.location.href = '/'; // غيّر إلى رابط تسجيل الدخول أو صفحة رئيسية حسب حاجتك
+    });
+
+    // محاولة يدوية: لصق التوكن وفتح رابط التحقق عبر endpoint verify (محاولة بسيطة)
+    manualOpen.addEventListener('click', () => {
+      const tok = manualToken.value.trim();
+      if (!tok) { alert('ألصق التوكن أولا'); return; }
+      // هذه محاولة بسيطة: نعيد توجيه المتصفح إلى مسار التحقق في Supabase auth مع التوكن
+      // ملاحظة: قد يحتاج الأمر أن تزوّد redirect_to أيضاً بحيث يعود المتصفح لصفحتك بعد المعالجة
+      const redirectBack = encodeURIComponent(window.location.origin + window.location.pathname);
+      const verifyUrl = `${SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(tok)}&type=recovery&redirect_to=${redirectBack}`;
+      // نفتح الURL — هذا ينبغي أن يعيّن الكوكي ويعيد التوجيه إلى نفس الصفحة (أو يعيد بناء الجلسة)
+      window.location.href = verifyUrl;
+    });
+  </script>
+</body>
+</html>
